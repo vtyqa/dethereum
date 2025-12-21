@@ -7,6 +7,9 @@ const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS;
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 
+// Replace the URL below with the direct, public link to your GIF/animation file.
+const MINT_ANIMATION_URL = "";
+
 // --- Load ABI Fragment from JSON File ---
 const fs = require('fs');
 const abiFragment = JSON.parse(fs.readFileSync('./deth_abi.json', 'utf8'));
@@ -15,28 +18,34 @@ const abiFragment = JSON.parse(fs.readFileSync('./deth_abi.json', 'utf8'));
 let provider;
 let contract;
 
-// --- Function to handle Telegram Notification ---
+// --- Function to handle Telegram Notification (Using sendAnimation) ---
 async function sendTelegramNotification(user, amount) {
-    const valueEth = ethers.formatUnits(amount, 18); // Assume 18 decimals
+    const valueEth = ethers.formatUnits(amount, 18);
     const explorerUrl = `https://sepolia.etherscan.io/address/${user}`;
-    const message = `
+    
+    // The message becomes the 'caption' of the animation/GIF
+    const caption = `
 💀 **dETH was just berthed!**
 *${valueEth}* of Dethereum minted by:
 \`${user}\`
 [View on Etherscan](${explorerUrl})
     `;
 
-    const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+    // 💡 NEW API ENDPOINT: 'sendAnimation' 💡
+    const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendAnimation`;
+    
     try {
         await axios.post(url, {
             chat_id: TELEGRAM_CHAT_ID,
-            text: message,
+            // 💡 NEW PARAMETER: 'animation' 💡
+            animation: MINT_ANIMATION_URL, // <-- Your GIF/Animation URL
+            caption: caption,               // <-- Your text message (caption)
             parse_mode: 'Markdown',
             disable_web_page_preview: true
         });
-        console.log(`Telegram notification sent for Mint event to ${user}`);
+        console.log(`Telegram animation/GIF notification sent for Mint event to ${user}`);
     } catch (error) {
-        console.error('Error sending Telegram notification:', error.message);
+        console.error('Error sending Telegram animation/GIF notification:', error.message);
     }
 }
 
