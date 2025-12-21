@@ -1,0 +1,14 @@
+{
+  "name": "deth-sepolia-monitor",
+  "version": "1.0.0",
+  "description": "Telegram bot that monitors Dethereum (dETH) mints on Sepolia.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "axios": "^1.6.8",
+    "dotenv": "^16.4.5",
+    "ethers": "^6.11.1"
+  }
+}
