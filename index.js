@@ -2,12 +2,14 @@ const ethers = require('ethers');
 const axios = require('axios');
 require('dotenv').config();
 
+// --- Environment Variables ---
 const RPC_URL = process.env.SEPOLIA_RPC_URL;
 const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS;
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 
-// Replace the URL below with the direct, public link to your GIF/animation file.
+// --- Animation/GIF URL ---
+// You MUST replace this with the direct HTTPS link to your animation file (.gif or .mp4)
 const MINT_ANIMATION_URL = "https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExcnpkaWNxdzBmdmpmZXNndGhwdDRibWFidml3Mzc5MmxyNXdxbHgwbiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/rE79fD41FssPVXarj5/giphy.gif";
 
 // --- Load ABI Fragment from JSON File ---
@@ -18,32 +20,34 @@ const abiFragment = JSON.parse(fs.readFileSync('./deth_abi.json', 'utf8'));
 let provider;
 let contract;
 
-// --- Function to handle Telegram Notification (Using sendAnimation) ---
-async function sendTelegramNotification(user, amount) {
+// --- Function to handle Telegram Notification (Uses sendAnimation) ---
+// Now accepts the txHash to create a link
+async function sendTelegramNotification(user, amount, txHash) { 
     const valueEth = ethers.formatUnits(amount, 18);
-    const explorerUrl = `https://sepolia.etherscan.io/address/${user}`;
     
-    // The message becomes the 'caption' of the animation/GIF
+    // Construct the Etherscan Transaction URL using the hash
+    const explorerUrl = `https://sepolia.etherscan.io/tx/${txHash}`; 
+    
+    // The message is the 'caption' for the GIF/Animation
     const caption = `
 💀 **dETH was just berthed!**
 *${valueEth}* of Dethereum minted by:
 \`${user}\`
-[View on Etherscan](${explorerUrl})
+[View Transaction](${explorerUrl})
     `;
 
-    // 💡 NEW API ENDPOINT: 'sendAnimation' 💡
+    // Telegram Bot API Endpoint for sending animations
     const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendAnimation`;
     
     try {
         await axios.post(url, {
             chat_id: TELEGRAM_CHAT_ID,
-            // 💡 NEW PARAMETER: 'animation' 💡
-            animation: MINT_ANIMATION_URL, // <-- Your GIF/Animation URL
-            caption: caption,               // <-- Your text message (caption)
+            animation: MINT_ANIMATION_URL,
+            caption: caption,
             parse_mode: 'Markdown',
             disable_web_page_preview: true
         });
-        console.log(`Telegram animation/GIF notification sent for Mint event to ${user}`);
+        console.log(`Telegram animation/GIF notification sent for Tx: ${txHash}`);
     } catch (error) {
         console.error('Error sending Telegram animation/GIF notification:', error.message);
     }
@@ -59,6 +63,7 @@ function startListening() {
 
     // 2. Setup WebSocket Provider
     try {
+        // Use WebSocketProvider for continuous, event-based monitoring
         provider = new ethers.WebSocketProvider(RPC_URL);
         console.log(`Attempting connection to ${RPC_URL}...`);
     } catch (error) {
@@ -77,7 +82,6 @@ function startListening() {
     // 4. Handle connection error
     provider.websocket.on('error', (error) => {
         console.error('WebSocket error:', error.message);
-        // The 'close' handler will typically run right after, handling the reconnection.
     });
 
     // 5. Connect to the contract and start listening
@@ -89,10 +93,18 @@ function startListening() {
             console.log(`Connected to network: ${network.name} (Chain ID: ${network.chainId})`);
             console.log(`Starting to monitor contract ${CONTRACT_ADDRESS} for Mint events...`);
 
+            // The 'event' object (last parameter) contains the transaction hash
             contract.on("Mint", (user, amount, ethAmount, event) => {
+                
+                // Extract the transaction hash from the event log
+                const txHash = event.log.transactionHash; 
+
                 console.log('--- Mint Detected ---');
                 console.log(`User: ${user}, Amount: ${amount.toString()}, EthAmount: ${ethAmount.toString()}`);
-                sendTelegramNotification(user, amount);
+                console.log(`Transaction Hash: ${txHash}`);
+                
+                // Pass the transaction hash to the sender function
+                sendTelegramNotification(user, amount, txHash); 
             });
         })
         .catch(error => {
