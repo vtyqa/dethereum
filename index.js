@@ -21,7 +21,7 @@ if (!RPC_URL || !TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
     process.exit(1);
 }
 
-const provider = new ethers.JsonRpcProvider(RPC_URL);
+const provider = new ethers.WebSocketProvider(RPC_URL);
 const contract = new ethers.Contract(TOKEN_CONTRACT_ADDRESS, DETH_ABI, provider);
 
 // Function to send the Telegram message using Markdown for formatting
