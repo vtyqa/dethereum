@@ -31,13 +31,19 @@ async function sendTelegramNotification(user, amount, txHash) {
 // --- Function to handle Telegram Notification (Uses sendAnimation) ---
 // ... (function definition and setup)
 
+// --- Function to handle Telegram Notification (Uses sendAnimation) ---
+// ... (function definition and setup)
+
     // The message is the 'caption' for the GIF/Animation
+    // 👇 UPDATED CAPTION TEMPLATE
     const caption = `
 💀 **dETH was just berthed!**
-*${valueEth}* of Dethereum minted by:
-\`${user}\`
+*${valueEth}* of Dethereum minted
 [View Transaction](${explorerUrl})
     `;
+    // Note: The variable ${user} has been removed.
+
+// ... (rest of the function)
 
 // ... (rest of the function)
 
