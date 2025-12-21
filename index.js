@@ -1,82 +1,104 @@
-// Load environment variables from the Render setup (not a local .env file)
-require('dotenv').config();
-const { ethers } = require('ethers');
+const ethers = require('ethers');
 const axios = require('axios');
-const DETH_ABI = require('./deth_abi.json');
+require('dotenv').config();
 
-// --- Contract & Token Configuration ---
-const TOKEN_CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS;
-const TOKEN_DECIMALS = 18;
-const TOKEN_SYMBOL = "dETH";
-const ETHERSCAN_BASE_URL = "https://sepolia.etherscan.io/tx/";
-
-// --- API Keys & IDs (Pulled from Render's Environment Variables) ---
 const RPC_URL = process.env.SEPOLIA_RPC_URL;
+const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS;
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 
-// --- Setup ---
-if (!RPC_URL || !TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
-    console.error("CRITICAL ERROR: One or more environment variables are missing. Check your Render configuration.");
-    process.exit(1);
-}
+// --- Load ABI Fragment from JSON File ---
+const fs = require('fs');
+const abiFragment = JSON.parse(fs.readFileSync('./deth_abi.json', 'utf8'));
 
-const provider = new ethers.WebSocketProvider(RPC_URL);
-const contract = new ethers.Contract(TOKEN_CONTRACT_ADDRESS, DETH_ABI, provider);
+// --- GLOBAL VARIABLES FOR RECONNECTION ---
+let provider;
+let contract;
 
-// Function to send the Telegram message using Markdown for formatting
-async function sendTelegramMessage(text) {
+// --- Function to handle Telegram Notification ---
+async function sendTelegramNotification(user, amount) {
+    const valueEth = ethers.formatUnits(amount, 18); // Assume 18 decimals
+    const explorerUrl = `https://sepolia.etherscan.io/address/${user}`;
+    const message = `
+💀 **dETH was just berthed!**
+*${valueEth}* of Dethereum minted by:
+\`${user}\`
+[View on Etherscan](${explorerUrl})
+    `;
+
     const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
     try {
         await axios.post(url, {
             chat_id: TELEGRAM_CHAT_ID,
-            text: text,
-            parse_mode: 'Markdown', // Enables **bold** and [link](url) formatting
-            disable_web_page_preview: true // Makes the transaction link cleaner
+            text: message,
+            parse_mode: 'Markdown',
+            disable_web_page_preview: true
         });
-        console.log("Telegram message sent successfully!");
+        console.log(`Telegram notification sent for Mint event to ${user}`);
     } catch (error) {
-        console.error("Error sending Telegram message. Check BOT_TOKEN and CHAT_ID:", error.message);
+        console.error('Error sending Telegram notification:', error.message);
     }
 }
 
-// Function to start listening for the event
-function startMonitoring() {
-    console.log(`Starting to monitor contract ${TOKEN_CONTRACT_ADDRESS} for 'Mint' events...`);
+// --- Main Listening and Reconnection Function ---
+function startListening() {
+    // 1. Remove any existing listeners before creating a new provider/contract
+    if (contract) {
+        contract.removeAllListeners();
+        console.log('Removed existing contract listeners.');
+    }
 
-    // Listen for the 'Mint' event
-    contract.on("Mint", async (to, amount, event) => {
-        
-        // 1. Format the minted value
-        const humanReadableAmount = ethers.formatUnits(amount, TOKEN_DECIMALS);
-        
-        // 2. Construct the Etherscan transaction link
-        const txHash = event.log.transactionHash;
-        const txLink = `${ETHERSCAN_BASE_URL}${txHash}`;
+    // 2. Setup WebSocket Provider
+    try {
+        provider = new ethers.WebSocketProvider(RPC_URL);
+        console.log(`Attempting connection to ${RPC_URL}...`);
+    } catch (error) {
+        console.error("Provider initialization error:", error.message);
+        setTimeout(startListening, 5000); // Retry connection on initialization error
+        return;
+    }
 
-        // 3. Construct the desired message text
-        // Your requested format: "💀 dETH was just berthed! X (value) of Dethereum was minted. (link to transaction)"
-        const message = 
-            `💀 **${TOKEN_SYMBOL} was just berthed!**\n\n` +
-            `*${humanReadableAmount}* of Dethereum was minted.\n\n` +
-            `[Link to Transaction](${txLink})`;
-
-        console.log(`--- Mint Detected ---`);
-        console.log(`Amount: ${humanReadableAmount} ${TOKEN_SYMBOL}`);
-        console.log(`To: ${to}`);
-        console.log(`Tx Hash: ${txHash}`);
-        
-        // 4. Send the formatted message to Telegram
-        await sendTelegramMessage(message);
+    // 3. Handle connection close for automatic reconnection
+    provider.websocket.on('close', (code, reason) => {
+        console.error(`WebSocket closed. Code: ${code}. Reason: ${reason}`);
+        console.log('Attempting to reconnect in 5 seconds...');
+        setTimeout(startListening, 5000);
     });
 
-    // Handle initial connection status
-    provider.getNetwork().then(network => {
-        console.log(`Connected to network: ${network.name} (Chain ID: ${network.chainId})`);
-    }).catch(err => {
-        console.error("Failed to connect to the RPC provider. Check your SEPOLIA_RPC_URL.", err);
+    // 4. Handle connection error
+    provider.websocket.on('error', (error) => {
+        console.error('WebSocket error:', error.message);
+        // The 'close' handler will typically run right after, handling the reconnection.
     });
+
+    // 5. Connect to the contract and start listening
+    contract = new ethers.Contract(CONTRACT_ADDRESS, abiFragment, provider);
+
+    // 6. Wait for a connection before logging success and starting the listener
+    provider.getNetwork()
+        .then(network => {
+            console.log(`Connected to network: ${network.name} (Chain ID: ${network.chainId})`);
+            console.log(`Starting to monitor contract ${CONTRACT_ADDRESS} for Mint events...`);
+
+            contract.on("Mint", (user, amount, ethAmount, event) => {
+                console.log('--- Mint Detected ---');
+                console.log(`User: ${user}, Amount: ${amount.toString()}, EthAmount: ${ethAmount.toString()}`);
+                sendTelegramNotification(user, amount);
+            });
+        })
+        .catch(error => {
+            console.error("Failed to connect and get network information:", error.message);
+            console.log('Retrying connection in 5 seconds...');
+            setTimeout(startListening, 5000);
+        });
 }
 
-// Start the whole process
-startMonitoring();
+// Start the process
+(async () => {
+    // Critical check for environment variables
+    if (!RPC_URL || !CONTRACT_ADDRESS || !TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
+        console.error("CRITICAL ERROR: One or more environment variables are missing. Check your Render configuration.");
+        return;
+    }
+    startListening();
+})();
