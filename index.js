@@ -5,7 +5,7 @@ const axios = require('axios');
 const DETH_ABI = require('./deth_abi.json');
 
 // --- Contract & Token Configuration ---
-const TOKEN_CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS;;
+const TOKEN_CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS;
 const TOKEN_DECIMALS = 18;
 const TOKEN_SYMBOL = "dETH";
 const ETHERSCAN_BASE_URL = "https://sepolia.etherscan.io/tx/";
