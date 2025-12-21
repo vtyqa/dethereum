@@ -28,6 +28,9 @@ async function sendTelegramNotification(user, amount, txHash) {
     // Construct the Etherscan Transaction URL using the hash
     const explorerUrl = `https://sepolia.etherscan.io/tx/${txHash}`; 
     
+// --- Function to handle Telegram Notification (Uses sendAnimation) ---
+// ... (function definition and setup)
+
     // The message is the 'caption' for the GIF/Animation
     const caption = `
 💀 **dETH was just berthed!**
@@ -35,6 +38,8 @@ async function sendTelegramNotification(user, amount, txHash) {
 \`${user}\`
 [View Transaction](${explorerUrl})
     `;
+
+// ... (rest of the function)
 
     // Telegram Bot API Endpoint for sending animations
     const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendAnimation`;
