@@ -8,7 +8,7 @@ const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 
 // Replace the URL below with the direct, public link to your GIF/animation file.
-const MINT_ANIMATION_URL = "";
+const MINT_ANIMATION_URL = "https://jumpshare.com/s/xv6ckt0Njlr5EoIMRg5X";
 
 // --- Load ABI Fragment from JSON File ---
 const fs = require('fs');
