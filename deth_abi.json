@@ -1,12 +1,23 @@
-[
-  {
-    "name": "Mint",
-    "inputs": [
-      { "internalType": "address", "name": "user", "type": "address", "indexed": true },
-      { "internalType": "uint256", "name": "amount", "type": "uint256", "indexed": false },
-      { "internalType": "uint256", "name": "ethAmount", "type": "uint256", "indexed": false }
-    ],
-    "anonymous": false,
-    "type": "event"
-  }
-]
+// 1. Define the Zero Address constant
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+
+// 2. Update your listener with the IF check
+contract.on("Transfer", (from, to, value, event) => {
+    
+    // 🔥 THIS IS THE FILTER: Only proceed if 'from' is the Zero Address
+    if (from.toLowerCase() === ZERO_ADDRESS) {
+        
+        const txHash = event.log.transactionHash;
+        const valueEth = ethers.formatUnits(value, 18);
+
+        console.log('--- Mint Detected ---');
+        console.log(`User: ${to}, Amount: ${valueEth}`);
+        
+        // Send the notification
+        sendTelegramNotification(to, value, txHash);
+        
+    } else {
+        // This was a swap or a normal send - we ignore it.
+        console.log(`Skipping normal transfer from ${from} to ${to}`);
+    }
+});
