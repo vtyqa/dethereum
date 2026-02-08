@@ -1,29 +1,27 @@
-// 1. Define the Zero Address constant
-const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
-
-// 2. Update your listener with the IF check
-// This tells the provider: "Only send me Transfers where the 'from' (topic 1) is the Zero Address"
-const mintFilter = contract.filters.Transfer(ZERO_ADDRESS);
-
-contract.on(mintFilter, (from, to, value, event) => {
-    const txHash = event.log.transactionHash;
-    sendTelegramNotification(to, value, txHash);
-});
-    
-    // 🔥 THIS IS THE FILTER: Only proceed if 'from' is the Zero Address
-    if (from.toLowerCase() === ZERO_ADDRESS) {
-        
-        const txHash = event.log.transactionHash;
-        const valueEth = ethers.formatUnits(value, 18);
-
-        console.log('--- Mint Detected ---');
-        console.log(`User: ${to}, Amount: ${valueEth}`);
-        
-        // Send the notification
-        sendTelegramNotification(to, value, txHash);
-        
-    } else {
-        // This was a swap or a normal send - we ignore it.
-        console.log(`Skipping normal transfer from ${from} to ${to}`);
-    }
-});
+[
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "from",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "to",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "value",
+        "type": "uint256"
+      }
+    ],
+    "name": "Transfer",
+    "type": "event"
+  }
+]
