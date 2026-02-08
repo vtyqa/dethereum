@@ -26,7 +26,7 @@ async function sendTelegramNotification(user, amount, txHash) {
     const valueEth = ethers.formatUnits(amount, 18);
     
     // Construct the Etherscan Transaction URL using the hash
-    const explorerUrl = `https://sepolia.etherscan.io/tx/${txHash}`; 
+    const explorerUrl = `https://etherscan.io/tx/${txHash}`; 
     
 // --- Function to handle Telegram Notification (Uses sendAnimation) ---
 // ... (function definition and setup)
